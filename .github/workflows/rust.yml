@@ -24,10 +24,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Target Available
-      run: rustup target list
     - name: Target Installed
-      run: rustup toolchain list
+      run: rustup target list --installed
     - name: Build
       run: cargo build --release --target ${TARGET} --verbose
       env:
