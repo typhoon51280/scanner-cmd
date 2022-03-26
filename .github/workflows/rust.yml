@@ -76,11 +76,11 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v3
         with:
-          path: /artifacts
+          path: ~/artifacts
       - name: Publish Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: /artifacts/**/*.zip,/artifacts/**/*.tar.gz
+          artifacts: ~/artifacts/**/*.zip,~/artifacts/**/*.tar.gz
           allowUpdates: true
           generateReleaseNotes: true
           replacesArtifacts: true
