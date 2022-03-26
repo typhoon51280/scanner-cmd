@@ -2,9 +2,8 @@ name: Rust
 
 on:
   push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+    tags:
+      - 'v*'
 
 env:
   CARGO_TERM_COLOR: always
@@ -22,11 +21,15 @@ jobs:
             vendor: pc
             abi: -msvc
             rustflags: -C target-feature=+crt-static
+            archive_type: zip
+            archive_extension: .zip
           - system: darwin
             os: macos-latest
             vendor: apple
             abi: ""
             rustflags: -C target-feature=+crt-static
+            archive_type: tar
+            archive_extension: .tar.gz
         exclude:
           - system: darwin
             arch: i686
@@ -39,15 +42,30 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Target Installed
-      run: rustup target list --installed
     - name: Build
       run: cargo build --release --verbose
-    - name: Target (unix)
-      run: ls -l target
-      if: ${{ matrix.system != 'windows' }}
-    - name: Target (win)
-      run: dir target
-      if: ${{ matrix.system == 'windows' }}
-    - name: Run tests
+    - name: Tests
       run: cargo test --verbose
+    - name: Release Prepare
+      id: release
+      run: |
+        echo "::set-output name=artifact_file::${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}${{matrix.archive_extension}}"
+        echo "::set-output name=artifact_dir::target/${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}"
+    - name: Release Archive
+      uses: thedoctor0/zip-release@master
+      with:
+        type: ${{matrix.archive_type}}
+        filename: ${{steps.release.outputs.artifact_file}}
+        directory: ${{steps.release.outputs.artifact_dir}}
+        path: 'scanner-cmd*'
+    - name: Release Publish
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: ${{steps.release.outputs.artifact_dir}}/${{steps.release.outputs.artifact_file}}
+        allowUpdates: true
+        generateReleaseNotes: true
+        replacesArtifacts: true
+        removeArtifacts: true
+        prerelease: false
+        draft: false
+        token: ${{ secrets.RELEASE_TOKEN }}
