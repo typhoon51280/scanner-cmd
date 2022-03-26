@@ -37,6 +37,8 @@ jobs:
             arch: i686
           - system: linux
             arch: i686
+          - system: linux
+            arch: x86_64
 
     runs-on: ${{ matrix.os }}
     
