@@ -14,16 +14,33 @@ jobs:
   
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
+        system: [darwin, windows, linux]
+        arch: [i686, x86_64]
         include:
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
+          - system: windows
+            os: windows-latest
+            vendor: pc
+            abi: -msvc
             rustflags: -C target-feature=+crt-static
-          - os: macos-latest
-            target: x86_64-apple-darwin
+          - system: darwin
+            os: macos-latest
+            vendor: apple
+            abi: ""
             rustflags: -C target-feature=+crt-static
-    
+          - system: linux
+            os: ubuntu-latest
+            vendor: unknown
+            abi: -gnu
+            rustflags: ""
+        exclude:
+          - system: darwin
+            arch: i686
+
     runs-on: ${{ matrix.os }}
+    
+    env:
+      CARGO_BUILD_TARGET: ${{ matrix.arch + '-' + matrix.vendor + '-' + matrix.system + matrix.abi }}
+      RUSTFLAGS: ${{matrix.rustflags}}
 
     steps:
     - uses: actions/checkout@v2
@@ -31,11 +48,11 @@ jobs:
       run: rustup target list --installed
     - name: Build
       run: cargo build --release --verbose
-      env:
-        RUSTFLAGS: ${{matrix.rustflags}}
-        CARGO_BUILD_TARGET: ${{matrix.target}}
+    - name: Target (unix)
+      run: ls -l target
+      if: ${{ matrix.system != 'windows' }}
+    - name: Target (win)
+      run: dir target
+      if: ${{ matrix.system == 'windows' }}
     - name: Run tests
       run: cargo test --verbose
-      env:
-        RUSTFLAGS: ${{matrix.rustflags}}
-        TARGET: ${{matrix.target}}
