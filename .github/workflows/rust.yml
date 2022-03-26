@@ -52,10 +52,10 @@ jobs:
       run: cargo test --verbose
     - name: Release Verify (windows)
       if: ${{matrix.system == 'windows'}}
-      run: dir ${{steps.build.outputs.artifact_dir}}\${{steps.build.outputs.artifact_file}}
+      run: dir ${{steps.build.outputs.artifact_dir}}
     - name: Release Verify (macos)
       if: ${{matrix.system == 'darwin'}}
-      run: ls -l ${{steps.build.outputs.artifact_dir}}/${{steps.build.outputs.artifact_file}}
+      run: ls -l ${{steps.build.outputs.artifact_dir}}
     - name: Release Prepare
       uses: thedoctor0/zip-release@master
       with:
