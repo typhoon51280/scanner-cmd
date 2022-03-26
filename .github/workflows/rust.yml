@@ -48,8 +48,9 @@ jobs:
       id: build
       run: |
         cargo build --release --verbose
-        echo "::set-output name=archive_dir::target/${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}/release"
+        echo "::set-output name=archive_name::${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}"
         echo "::set-output name=archive_file::${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}${{matrix.archive_extension}}"
+        echo "::set-output name=archive_dir::target/${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}/release"
     - name: Tests
       run: cargo test --verbose
     - name: Verify Artifact (windows)
@@ -68,7 +69,7 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v3
       with:
-        name: ${{steps.build.outputs.archive_file}}
+        name: ${{steps.build.outputs.archive_name}}
         path: ${{steps.build.outputs.archive_dir}}/${{steps.build.outputs.archive_file}}
 
   release:
@@ -82,7 +83,7 @@ jobs:
       - name: Publish Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: ~/artifacts/*.zip,~/artifacts/*.tar.gz
+          artifacts: ~/artifacts/**/*.zip,~/artifacts/**/*.tar.gz
           allowUpdates: true
           generateReleaseNotes: true
           replacesArtifacts: true
