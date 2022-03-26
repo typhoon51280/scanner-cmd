@@ -27,10 +27,10 @@ jobs:
     - name: Target Installed
       run: rustup target list --installed
     - name: Build
-      run: cargo build --release --target ${TARGET} --verbose
+      run: cargo build --release --verbose
       env:
         RUSTFLAGS: ${{matrix.rustflags}}
-        TARGET: ${{matrix.target}}
+        CARGO_BUILD_TARGET: ${{matrix.target}}
     - name: Run tests
       run: cargo test --verbose
       env:
