@@ -14,7 +14,7 @@ jobs:
   
     strategy:
       matrix:
-        system: [darwin, windows, linux]
+        system: [darwin, windows]
         arch: [i686, x86_64]
         include:
           - system: windows
@@ -27,18 +27,9 @@ jobs:
             vendor: apple
             abi: ""
             rustflags: -C target-feature=+crt-static
-          - system: linux
-            os: ubuntu-latest
-            vendor: unknown
-            abi: -gnu
-            rustflags: ""
         exclude:
           - system: darwin
             arch: i686
-          - system: linux
-            arch: i686
-          - system: linux
-            arch: x86_64
 
     runs-on: ${{ matrix.os }}
     
