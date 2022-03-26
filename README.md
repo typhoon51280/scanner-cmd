@@ -1,8 +1,6 @@
 # scanner-cmd
 
-Keyboard Emulator 1.0.0
-
-Keyboard Input Simulator
+Keyboard Input Simulator 1.0.0
 
 USAGE:
     scanner-cmd.exe [OPTIONS] --code `<code>`
@@ -35,7 +33,7 @@ The following brackets are available:
 - ALT
 
 ```
-{+UNICODE}Hello world{-UNICODE}
+{+UNICODE}Hello world 😀{-UNICODE}
 {+CTRL}a{-CTRL}
 {+SHIFT}Hello World{-SHIFT}
 {+META}Hello World{-META}
@@ -54,7 +52,7 @@ Examples:
 {+SHIFT}hello{CR}{LF}world{-SHIFT}
 ```
 
-is rendered as 
+is entered as follows: 
 
 ```
 HELLO
