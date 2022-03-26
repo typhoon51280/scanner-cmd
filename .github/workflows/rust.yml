@@ -43,34 +43,30 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Build
-      run: cargo build --release --verbose
+      id: build
+      run: |
+        cargo build --release --verbose
+        echo "::set-output name=artifact_dir::target/${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}/release"
+        echo "::set-output name=artifact_file::${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}${{matrix.archive_extension}}"
     - name: Tests
       run: cargo test --verbose
-    - name: Release Prepare (windows)
-      id: release
+    - name: Release Verify (windows)
       if: ${{matrix.system == 'windows'}}
-      run: |
-        echo "::set-output name=artifact_dir::target/${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}/release"
-        echo "::set-output name=artifact_file::${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}${{matrix.archive_extension}}"
-        dir ${{steps.release.outputs.artifact_dir}}\${{steps.release.outputs.artifact_file}}
-    - name: Release Prepare (macos)
-      id: release
+      run: dir ${{steps.build.outputs.artifact_dir}}\${{steps.build.outputs.artifact_file}}
+    - name: Release Verify (macos)
       if: ${{matrix.system == 'darwin'}}
-      run: |
-        echo "::set-output name=artifact_dir::target/${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}/release"
-        echo "::set-output name=artifact_file::${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}${{matrix.archive_extension}}"
-        ls -l ${{steps.release.outputs.artifact_dir}}/${{steps.release.outputs.artifact_file}}
-    - name: Release Archive
+      run: ls -l ${{steps.build.outputs.artifact_dir}}/${{steps.build.outputs.artifact_file}}
+    - name: Release Prepare
       uses: thedoctor0/zip-release@master
       with:
         type: ${{matrix.archive_type}}
-        directory: ${{steps.release.outputs.artifact_dir}}
-        filename: ${{steps.release.outputs.artifact_file}}
+        directory: ${{steps.build.outputs.artifact_dir}}
+        filename: ${{steps.build.outputs.artifact_file}}
         path: 'scanner-cmd*'
     - name: Release Publish
       uses: ncipollo/release-action@v1
       with:
-        artifacts: ${{steps.release.outputs.artifact_dir}}/${{steps.release.outputs.artifact_file}}
+        artifacts: ${{steps.build.outputs.artifact_dir}}/${{steps.build.outputs.artifact_file}}
         allowUpdates: true
         generateReleaseNotes: true
         replacesArtifacts: true
