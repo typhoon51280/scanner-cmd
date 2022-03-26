@@ -35,6 +35,8 @@ jobs:
         exclude:
           - system: darwin
             arch: i686
+          - system: linux
+            arch: i686
 
     runs-on: ${{ matrix.os }}
     
