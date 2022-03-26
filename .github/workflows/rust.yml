@@ -39,7 +39,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     
     env:
-      CARGO_BUILD_TARGET: ${{ matrix.arch + '-' + matrix.vendor + '-' + matrix.system + matrix.abi }}
+      CARGO_BUILD_TARGET: ${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}
       RUSTFLAGS: ${{matrix.rustflags}}
 
     steps:
