@@ -46,17 +46,26 @@ jobs:
       run: cargo build --release --verbose
     - name: Tests
       run: cargo test --verbose
-    - name: Release Prepare
+    - name: Release Prepare (windows)
       id: release
+      if: ${{matrix.system == 'windows'}}
       run: |
+        echo "::set-output name=artifact_dir::target/${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}/release"
         echo "::set-output name=artifact_file::${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}${{matrix.archive_extension}}"
-        echo "::set-output name=artifact_dir::target/${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}"
+        dir ${{steps.release.outputs.artifact_dir}}\${{steps.release.outputs.artifact_file}}
+    - name: Release Prepare (macos)
+      id: release
+      if: ${{matrix.system == 'darwin'}}
+      run: |
+        echo "::set-output name=artifact_dir::target/${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}/release"
+        echo "::set-output name=artifact_file::${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}${{matrix.archive_extension}}"
+        ls -l ${{steps.release.outputs.artifact_dir}}/${{steps.release.outputs.artifact_file}}
     - name: Release Archive
       uses: thedoctor0/zip-release@master
       with:
         type: ${{matrix.archive_type}}
-        filename: ${{steps.release.outputs.artifact_file}}
         directory: ${{steps.release.outputs.artifact_dir}}
+        filename: ${{steps.release.outputs.artifact_file}}
         path: 'scanner-cmd*'
     - name: Release Publish
       uses: ncipollo/release-action@v1
