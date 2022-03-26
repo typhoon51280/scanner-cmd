@@ -17,8 +17,11 @@ jobs:
         os: [windows-latest, macos-latest]
         include:
           - os: windows-latest
-            rustflags: -C target-feature=+crt-static
             target: x86_64-pc-windows-msvc
+            rustflags: -C target-feature=+crt-static
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            rustflags: -C target-feature=+crt-static
     
     runs-on: ${{ matrix.os }}
 
