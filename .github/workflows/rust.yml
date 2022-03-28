@@ -6,12 +6,17 @@ on:
       - 'v*'
 
 jobs:
+
   build:
-  
+
     strategy:
       matrix:
-        system: [darwin, windows]
-        arch: [i686, x86_64]
+        system:
+          - darwin
+          - windows
+        arch:
+         - i686
+         - x86_64
         include:
           - system: windows
             os: windows-latest
@@ -31,6 +36,15 @@ jobs:
             artifact_extension: ""
             archive_type: tar
             archive_extension: .tar.gz
+          - system: linux
+            os: ubuntu-latest
+            vendor: unknown
+            abi: "-musl"
+            rustflags: -C target-feature=+crt-static
+            artifact_name: scanner-cmd
+            artifact_extension: ""
+            archive_type: tar
+            archive_extension: .tar.gz
         exclude:
           - system: darwin
             arch: i686
@@ -44,10 +58,17 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Build
+    - name: Build (linux)
+      if: ${{matrix.system == 'linux'}}
+      uses: gmiam/rust-musl-action@master
+      with:
+        args: cargo build --release --verbose
+    - name: Build (windows/apple)
+      if: ${{matrix.system != 'linux'}}
+      run: cargo build --release --verbose
+    - name: Build Output
       id: build
       run: |
-        cargo build --release --verbose
         echo "::set-output name=archive_name::${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}"
         echo "::set-output name=archive_file::${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}${{matrix.archive_extension}}"
         echo "::set-output name=archive_dir::target/${{matrix.arch}}-${{matrix.vendor}}-${{matrix.system}}${{matrix.abi}}/release"
@@ -70,10 +91,11 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: ${{steps.build.outputs.archive_name}}
-        path: ${{steps.build.outputs.archive_dir}}/${{steps.build.outputs.archive_file}}
+        path: ${{steps.build.outputs.archive_dir}}/${{steps.build.outputs.archive_file}}     
 
   release:
-    needs: build
+    needs:
+      - build
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
