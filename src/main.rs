@@ -1,10 +1,11 @@
-use clap::{App, Arg};
-use std::{thread, time::Duration};
-use std::fs;
+use clap::{Command, Arg};
+use std::{thread, fs, time};
 use enigo::{Enigo, KeyboardControllable};
 
+mod parser;
+
 fn main() {
-    let matches = App::new("Keyboard Emulator")
+    let matches = Command::new("Keyboard Emulator")
         .version("1.0.0")
         .author("Humanoid Typhoon <typhoon51280@users.noreply.github.com>")
         .about("Keyboard Input Simulator")
@@ -58,12 +59,9 @@ fn main() {
     }
     let command = Some(content.trim_matches(|c| c == '\'')).expect("error trim code");
     let mut enigo = Enigo::new();
-    thread::sleep(Duration::from_secs(delay));
+    thread::sleep(time::Duration::from_secs(delay));
     if parse_flag {
-        let command_unicode = command
-            .replace("{CR}", "\r")
-            .replace("{LF}", "\n");
-        enigo.key_sequence_parse(command_unicode.as_str());
+        enigo.key_sequence_parse(command);
     } else {
         enigo.key_sequence(command);
     }
