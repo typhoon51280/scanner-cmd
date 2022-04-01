@@ -1,10 +1,10 @@
 use nom::{
   IResult,
   error::{VerboseError, context},
-  bytes::complete::{tag},
-  character::complete::{u16, anychar},
-  sequence::{delimited, preceded},
-  multi::{many1, many0},
+  bytes::complete::{tag, take_until1},
+  character::{complete::{u16, space0}},
+  sequence::{delimited, preceded, terminated},
+  multi::{many1},
   combinator::{value, map},
   branch::{alt},
 };
@@ -12,6 +12,7 @@ use enigo::Key;
 
 type Res<T, U> = IResult<T, U, VerboseError<T>>;
 
+#[derive(PartialEq,Debug)]
 enum Token {
   Unicode(String),
   KeyClick(Key),
@@ -19,9 +20,9 @@ enum Token {
   KeyDown(Key),
 }
 
-struct KeyboardInputs {
-  tokens: Vec<Token>
-}
+// struct KeyboardInputs {
+//   tokens: Vec<Token>
+// }
 
 fn key_fn(input: &str) -> Res<&str, Key> {
   context("F1-F12",
@@ -106,11 +107,56 @@ fn key_raw(input: &str) -> Res<&str, Key> {
 }
 
 fn key_layout(input: &str) -> Res<&str, Vec<Key>> {
-  context("Layout::(<chars>)",
+  context("Key::(<chars>)",
     delimited(
-      tag("Layout::("),
-      many1(map(anychar, |c| Key::Layout(c))),
+      tag("("),
+      map(take_until1(")"), |s: &str| s.chars().map(|c| Key::Layout(c)).collect()),
       tag(")")
+    )
+  )(input)
+}
+
+fn bracket_open(input: &str) -> Res<&str, &str> {
+  context("[[",
+    preceded(
+      space0,
+      tag("[["),
+    )
+  )(input)
+}
+
+fn bracket_close(input: &str) -> Res<&str, &str> {
+  context("]]",
+  terminated(
+      tag("]]"),
+      space0
+    )
+  )(input)
+}
+
+fn graph_open(input: &str) -> Res<&str, &str> {
+  context("graph open",
+    preceded(
+      space0,
+      tag("{{"),
+    )
+  )(input)
+}
+
+fn graph_close(input: &str) -> Res<&str, &str> {
+  context("graph close",
+    terminated(
+      tag("}}"),
+      space0
+    )
+  )(input)
+}
+
+fn key_prefix(input: &str) -> Res<&str, &str> {
+  context("Key::",
+    preceded(
+      bracket_open,
+      tag("Key::")
     )
   )(input)
 }
@@ -118,7 +164,7 @@ fn key_layout(input: &str) -> Res<&str, Vec<Key>> {
 fn key_button(input: &str) -> Res<&str, Vec<Key>> {
   context("[[Key::???]]",
   delimited(
-    tag("[[Key::"),
+    key_prefix,
       alt((
         map(
           alt((key_space, key_meta, key_arrow, key_move, key_fn, key_raw)),
@@ -126,51 +172,149 @@ fn key_button(input: &str) -> Res<&str, Vec<Key>> {
         ),
         key_layout
       )),
-    tag("]]")
+      bracket_close
+    )
+  )(input)
+}
+
+fn key_input_open(input: &str) -> Res<&str, &str> {
+  context("key input open",
+    delimited(
+      graph_open,
+        tag("KeyInput"),
+        graph_close
+    )
+  )(input)
+}
+
+fn key_input_close(input: &str) -> Res<&str, &str> {
+  context("key input close",
+    delimited(
+      graph_open,
+        tag("/KeyInput"),
+        graph_close
     )
   )(input)
 }
 
 fn key_input(input: &str) -> Res<&str, Vec<Token>> {
-  context("",
+  context("key input",
     delimited(
-      tag("{{KeyInput}}"),
-      map(many1(key_button), |keys| keys.into_iter().flatten().map(|key| Token::KeyClick(key)).collect()),
-      tag("{{/KeyInput}}")
+      key_input_open,
+      alt((
+        map(many1(key_button), |keys| keys.into_iter().flatten().map(|key| Token::KeyClick(key)).collect()),
+      )),
+      key_input_close
+    )
+  )(input)
+}
+
+fn key_down_open(input: &str) -> Res<&str, &str> {
+  context("key down open",
+    delimited(
+      graph_open,
+        tag("KeyDown"),
+        graph_close
+    )
+  )(input)
+}
+
+fn key_down_close(input: &str) -> Res<&str, &str> {
+  context("key down close",
+    delimited(
+      graph_open,
+        tag("/KeyDown"),
+        graph_close
     )
   )(input)
 }
 
 fn key_down(input: &str) -> Res<&str, Vec<Token>> {
-  context("",
+  context("key down",
     delimited(
-      tag("{{KeyDown}}"),
+      key_down_open,
       map(key_button, |keys| keys.into_iter().map(|key| Token::KeyDown(key)).collect()),
-      tag("{{/KeyDown}}")
+      key_down_close
+    )
+  )(input)
+}
+
+fn key_up_open(input: &str) -> Res<&str, &str> {
+  context("key up open",
+    delimited(
+      graph_open,
+        tag("KeyUp"),
+        graph_close
+    )
+  )(input)
+}
+
+fn key_up_close(input: &str) -> Res<&str, &str> {
+  context("key up close",
+    delimited(
+      graph_open,
+        tag("/KeyUp"),
+        graph_close
     )
   )(input)
 }
 
 fn key_up(input: &str) -> Res<&str, Vec<Token>> {
-  context("",
+  context("key up",
     delimited(
-      tag("{{KeyUp}}"),
+      key_up_open,
       map(key_button, |keys| keys.into_iter().map(|key| Token::KeyUp(key)).collect()),
-      tag("{{/KeyUp}}")
+      key_up_close
     )
   )(input)
 }
 
-fn key_sequence(input: &str) -> Res<&str, Vec<Token>> {
-  context("",
+fn text(input: &str) -> Res<&str, Vec<Token>> {
+  context("text",
+    delimited(
+      tag("{{Text}}"),
+      map(
+        take_until1("{{/Text}}"),
+        |chars: &str| vec![Token::Unicode(chars.to_string())]
+      ),
+      tag("{{/Text}}")
+    )
+  )(input)
+}
+
+fn keyboard(input: &str) -> Res<&str, Vec<Token>> {
+  context("mutiple keyboard inputs",
     map(
       many1(
         alt((
-          alt((key_input, key_down, key_up)),
-          map(many0(anychar), |chars| vec![Token::Unicode(chars.into_iter().collect())])
-        ))
+          key_input,
+          key_down,
+          key_up,
+          text
+        )),
       ),
       |tokens| tokens.into_iter().flatten().collect()
     )
   )(input)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn key_space() {
+      assert_eq!(keyboard("{{KeyInput}}[[Key::Return]]{{/KeyInput}}"), Ok(("", vec![Token::KeyClick(Key::Return)])));
+      assert_eq!(keyboard("{{KeyInput}}[[Key::Backspace]]{{/KeyInput}}"), Ok(("", vec![Token::KeyClick(Key::Backspace)])));
+    }
+
+    #[test]
+    fn text() {
+      assert_eq!(keyboard("{{Text}}hello world{{/Text}}"), Ok(("", vec![Token::Unicode(String::from("hello world"))])));
+    }
+
+    #[test]
+    fn mix_text_keylayout() {
+      assert_eq!(keyboard("{{Text}}hello{{/Text}}{{KeyInput}}[[Key::( )]]{{/KeyInput}}{{Text}}world{{/Text}}"), Ok(("", vec![Token::Unicode(String::from("hello")), Token::KeyClick(Key::Layout(' ')), Token::Unicode(String::from("world"))])));
+    }
 }
