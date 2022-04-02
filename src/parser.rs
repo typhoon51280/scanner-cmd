@@ -2,7 +2,7 @@ use nom::{
   IResult,
   error::{VerboseError, context},
   bytes::complete::{tag, take_until1},
-  character::{complete::{u16, space0}},
+  character::complete::{u16, space0},
   sequence::{delimited, preceded, terminated},
   multi::{many1},
   combinator::{value, map},
@@ -15,7 +15,7 @@ type Res<T, U> = IResult<T, U, VerboseError<T>>;
 #[derive(PartialEq,Debug)]
 enum Token {
   Unicode(String),
-  KeyClick(Key),
+  KeyInput(Key),
   KeyUp(Key),
   KeyDown(Key),
 }
@@ -202,7 +202,7 @@ fn key_input(input: &str) -> Res<&str, Vec<Token>> {
     delimited(
       key_input_open,
       alt((
-        map(many1(key_button), |keys| keys.into_iter().flatten().map(|key| Token::KeyClick(key)).collect()),
+        map(many1(key_button), |keys| keys.into_iter().flatten().map(|key| Token::KeyInput(key)).collect()),
       )),
       key_input_close
     )
@@ -298,14 +298,54 @@ fn keyboard(input: &str) -> Res<&str, Vec<Token>> {
   )(input)
 }
 
+/**
+fn verbose_error() {
+  let data = "\
+  {{Text}}hello world{{/Text}}";
+  let result = keyboard(data);
+  println!("parsed: {:?}", result);
+  match result.borrow() {
+    Err(Err::Error(e)) | Err(Err::Failure(e)) => {
+      println!("verbose errors:\n{}", convert_error(data, e.to_owned()));
+    }
+    _ => {}
+  }
+  assert_eq!(result, Ok(("", vec![
+    Token::Unicode(String::from("hello world"))
+  ])));
+}
+**/
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn key_space() {
-      assert_eq!(keyboard("{{KeyInput}}[[Key::Return]]{{/KeyInput}}"), Ok(("", vec![Token::KeyClick(Key::Return)])));
-      assert_eq!(keyboard("{{KeyInput}}[[Key::Backspace]]{{/KeyInput}}"), Ok(("", vec![Token::KeyClick(Key::Backspace)])));
+    // Key::<Return|Delete|Backspace|Space|Tab>
+    fn key_input_space() {
+      assert_eq!(keyboard("{{KeyInput}}[[Key::Return]]{{/KeyInput}}"), Ok(("", vec![Token::KeyInput(Key::Return)])));
+      assert_eq!(keyboard("{{KeyInput}}[[Key::Delete]]{{/KeyInput}}"), Ok(("", vec![Token::KeyInput(Key::Delete)])));
+      assert_eq!(keyboard("{{KeyInput}}[[Key::Backspace]]{{/KeyInput}}"), Ok(("", vec![Token::KeyInput(Key::Backspace)])));
+      assert_eq!(keyboard("{{KeyInput}}[[Key::Space]]{{/KeyInput}}"), Ok(("", vec![Token::KeyInput(Key::Space)])));
+      assert_eq!(keyboard("{{KeyInput}}[[Key::Tab]]{{/KeyInput}}"), Ok(("", vec![Token::KeyInput(Key::Tab)])));
+      assert_eq!(
+        keyboard("\
+          {{KeyInput}}\
+          [[Key::Return]]\
+          [[Key::Delete]]\
+          [[Key::Backspace]]\
+          [[Key::Space]]\
+          [[Key::Tab]]\
+          {{/KeyInput}}"
+        ),
+        Ok(("",vec![
+          Token::KeyInput(Key::Return),
+          Token::KeyInput(Key::Delete),
+          Token::KeyInput(Key::Backspace),
+          Token::KeyInput(Key::Space),
+          Token::KeyInput(Key::Tab)
+        ]))
+      );
     }
 
     #[test]
@@ -315,6 +355,19 @@ mod tests {
 
     #[test]
     fn mix_text_keylayout() {
-      assert_eq!(keyboard("{{Text}}hello{{/Text}}{{KeyInput}}[[Key::( )]]{{/KeyInput}}{{Text}}world{{/Text}}"), Ok(("", vec![Token::Unicode(String::from("hello")), Token::KeyClick(Key::Layout(' ')), Token::Unicode(String::from("world"))])));
+      assert_eq!(
+        keyboard("\
+          {{Text}}hello{{/Text}} \
+          {{KeyInput}} \
+            [[Key::( )]] \
+          {{/KeyInput}} \
+          {{Text}}world{{/Text}}"
+        ),
+        Ok(("", vec![
+          Token::Unicode(String::from("hello")),
+          Token::KeyInput(Key::Layout(' ')),
+          Token::Unicode(String::from("world"))
+        ]))
+      );
     }
 }
