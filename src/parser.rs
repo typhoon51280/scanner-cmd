@@ -1,12 +1,10 @@
 use nom::{
   IResult,
   Parser,
-  bytes::complete::{take_until1},
-  character::{
-    complete::{u16, space0, anychar}
-  },
+  bytes::complete::take_until1,
+  character::complete::{u16, space0, anychar},
   multi::{many1, many_till},
-  branch::{alt},
+  branch::alt,
 };
 use nom_supreme::{
   ParserExt,
@@ -17,22 +15,13 @@ use enigo::Key;
 
 type Res<T, U> = IResult<T, U, ErrorTree<T>>;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug,PartialEq,Clone)]
 pub enum Token {
   Text(String),
   KeyInput(Key),
   KeyUp(Key),
   KeyDown(Key),
 }
-
-#[derive(PartialEq,Debug,Clone)]
-pub struct Keyboard<Token> {
-  tokens: Vec<Token>
-}
-
-// struct KeyboardInputs {
-//   tokens: Vec<Token>
-// }
 
 fn key_fn(input: &str) -> Res<&str, Key> {
   alt((
@@ -242,24 +231,6 @@ fn keyboard(input: &str) -> Res<&str, Vec<Token>> {
   .parse(input)
 }
 
-/**
-fn verbose_error() {
-  let data = "\
-  {{Text}}hello world{{/Text}}";
-  let result = keyboard(data);
-  println!("parsed: {:?}", result);
-  match result.borrow() {
-    Err(Err::Error(e)) | Err(Err::Failure(e)) => {
-      println!("verbose errors:\n{}", convert_error(data, e.to_owned()));
-    }
-    _ => {}
-  }
-  assert_eq!(result, Ok(("", vec![
-    Token::Text(String::from("hello world"))
-  ])));
-}
-**/
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -295,23 +266,21 @@ mod tests {
     #[test]
     fn test_text() {
       assert_eq!(
-        text("{{Text}}hello world{{/Text}}").expect("Testing Parser"),
+        keyboard("{{Text}}hello world{{/Text}}").expect("Parser Error"),
         ("", vec![Token::Text(String::from("hello world"))])
       );
     }
 
     #[test]
     fn test_multi_spaces() {
-      let result = keyboard("\
-      {{ Texts }}hello{{ / Text }} \
-      {{ KeyInput  }} \
-        [[Key::Layout( )  ]] \
-      {{   / KeyInput }} \
-      {{ Text }}world{{ / Text }}"
-      ).expect("Testing Parser");
-      println!("{:#?}", result);
       assert_eq!(
-        result,
+        keyboard("\
+          {{ Text }}hello{{ / Text }} \
+          {{ KeyInput  }} \
+            [[Key::Layout( )  ]] \
+          {{   / KeyInput }} \
+          {{ Text }}world{{ / Text }}"
+          ).expect("Parser Error"),
         ("", vec![
           Token::Text(String::from("hello")),
           Token::KeyInput(Key::Layout(' ')),
