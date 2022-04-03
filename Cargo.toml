@@ -9,3 +9,5 @@ edition = "2021"
 enigo = "*"
 clap = { version = "3.1", features = ["derive"] }
 nom = "7.1"
+nom-supreme = {version = "0.7", features = ["std", "error"]}
+nom-trace = "*"

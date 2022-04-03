@@ -1,23 +1,33 @@
 use nom::{
   IResult,
-  error::{VerboseError, context},
-  bytes::complete::{tag, take_until1},
-  character::complete::{u16, space0},
-  sequence::{delimited, preceded, terminated},
-  multi::{many1},
-  combinator::{value, map},
+  Parser,
+  bytes::complete::{take_until1},
+  character::{
+    complete::{u16, space0, anychar}
+  },
+  multi::{many1, many_till},
   branch::{alt},
+};
+use nom_supreme::{
+  ParserExt,
+  error::ErrorTree,
+  tag::complete::tag,
 };
 use enigo::Key;
 
-type Res<T, U> = IResult<T, U, VerboseError<T>>;
+type Res<T, U> = IResult<T, U, ErrorTree<T>>;
 
-#[derive(PartialEq,Debug)]
-enum Token {
-  Unicode(String),
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Token {
+  Text(String),
   KeyInput(Key),
   KeyUp(Key),
   KeyDown(Key),
+}
+
+#[derive(PartialEq,Debug,Clone)]
+pub struct Keyboard<Token> {
+  tokens: Vec<Token>
 }
 
 // struct KeyboardInputs {
@@ -25,277 +35,211 @@ enum Token {
 // }
 
 fn key_fn(input: &str) -> Res<&str, Key> {
-  context("F1-F12",
-    preceded(
-      tag("F"),
-      alt((
-        value(Key::F1, tag("1")),
-        value(Key::F2, tag("2")),
-        value(Key::F3, tag("3")),
-        value(Key::F4, tag("4")),
-        value(Key::F5, tag("5")),
-        value(Key::F6, tag("6")),
-        value(Key::F7, tag("7")),
-        value(Key::F8, tag("8")),
-        value(Key::F9, tag("9")),
-        value(Key::F10, tag("10")),
-        value(Key::F11, tag("11")),
-        value(Key::F12, tag("12")),
-      ))
-    )
-  )(input)
+  alt((
+    tag("1").context("Key::F1").value(Key::F1),
+    tag("2").context("Key::F2").value(Key::F2),
+    tag("3").context("Key::F3").value(Key::F3),
+    tag("4").context("Key::F4").value(Key::F4),
+    tag("5").context("Key::F5").value(Key::F5),
+    tag("6").context("Key::F6").value(Key::F6),
+    tag("7").context("Key::F7").value(Key::F7),
+    tag("8").context("Key::F8").value(Key::F8),
+    tag("9").context("Key::F9").value(Key::F9),
+    tag("10").context("Key::F10").value(Key::F10),
+    tag("11").context("Key::F11").value(Key::F11),
+    tag("12").context("Key::F12").value(Key::F12),
+  ))
+  .preceded_by(tag("F"))
+  .parse(input)
 }
 
-fn key_space(input: &str) -> Res<&str, Key> {
-  context("Key::<Return|Delete|Backspace|Space|Tab>",
-    alt((
-        value(Key::Return, tag("Return")),
-        value(Key::Delete, tag("Delete")),
-        value(Key::Backspace, tag("Backspace")),
-        value(Key::Space, tag("Space")),
-        value(Key::Tab, tag("Tab")),
-    ))
-  )(input)
-}
-
-fn key_meta(input: &str) -> Res<&str, Key> {
-  context("Key::<Alt|CapsLock|Control|Escape|Meta|Option|Shift>",
-    alt((
-      value(Key::Alt, tag("Alt")),
-      value(Key::CapsLock, tag("CapsLock")),
-      value(Key::Control, tag("Control")),
-      value(Key::Escape, tag("Escape")),
-      value(Key::Meta, tag("Meta")),
-      value(Key::Option, tag("Option")),
-      value(Key::Shift, tag("Shift")),
-    ))
-  )(input)
-}
-
-fn key_move(input: &str) -> Res<&str, Key> {
-  context("Key::<Home|End|PageDown|PageUp>",
-    alt((
-      value(Key::Home, tag("Home")),
-      value(Key::End, tag("End")),
-      value(Key::PageDown, tag("PageDown")),
-      value(Key::PageUp, tag("PageUp")),
-    ))
-  )(input)
-}
-
-fn key_arrow(input: &str) -> Res<&str, Key> {
-  context("Key::<UpArrow|DownArrow|LeftArrow|RightArrow>",
-    alt((
-      value(Key::UpArrow, tag("UpArrow")),
-      value(Key::DownArrow, tag("DownArrow")),
-      value(Key::LeftArrow, tag("LeftArrow")),
-      value(Key::RightArrow, tag("RightArrow")),
-    ))
-  )(input)
+fn key_other(input: &str) -> Res<&str, Key> {
+  alt((
+    // SPACES
+    tag("Return").context("Key::Return").value(Key::Return),
+    tag("Delete").context("Key::Delete").value(Key::Delete),
+    tag("Backspace").context("Key::Backspace").value(Key::Backspace),
+    tag("Space").context("Key::Space").value(Key::Space),
+    tag("Tab").context("Key::Tab").value(Key::Tab),
+    // META
+    tag("Alt").context("Key::Alt").value(Key::Alt),
+    tag("CapsLock").context("Key::CapsLock").value(Key::CapsLock),
+    tag("Control").context("Key::Control").value(Key::Control),
+    tag("Escape").context("Key::Escape").value(Key::Escape),
+    tag("Meta").context("Key::Meta").value(Key::Meta),
+    tag("Option").context("Key::Option").value(Key::Option),
+    tag("Shift").context("Key::Shift").value(Key::Shift),
+    // MOVEMENT
+    tag("Home").context("Key::Home").value(Key::Home),
+    tag("End").context("Key::End").value(Key::End),
+    tag("PageDown").context("Key::PageDown").value(Key::PageDown),
+    tag("PageUp").context("Key::PageUp").value(Key::PageUp),
+    tag("UpArrow").context("Key::UpArrow").value(Key::UpArrow),
+    tag("DownArrow").context("Key::DownArrow").value(Key::DownArrow),
+    tag("LeftArrow").context("Key::LeftArrow").value(Key::LeftArrow),
+    tag("RightArrow").context("Key::RightArrow").value(Key::RightArrow),
+  ))
+  .parse(input)
 }
 
 fn key_raw(input: &str) -> Res<&str, Key> {
-  context("Key::Raw::(<u16>)",
-    map(
-        preceded(
-          tag("Raw::"),
-          u16
-        ),
-        |result| Key::Raw(result)
-      )
-  )(input)
+  u16
+  .preceded_by(tag("Raw("))
+  .terminated(tag(")"))
+  .map(|result| Key::Raw(result))
+  .parse(input)
 }
 
 fn key_layout(input: &str) -> Res<&str, Vec<Key>> {
-  context("Key::(<chars>)",
-    delimited(
-      tag("("),
-      map(take_until1(")"), |s: &str| s.chars().map(|c| Key::Layout(c)).collect()),
-      tag(")")
-    )
-  )(input)
-}
-
-fn bracket_open(input: &str) -> Res<&str, &str> {
-  context("[[",
-    preceded(
-      space0,
-      tag("[["),
-    )
-  )(input)
-}
-
-fn bracket_close(input: &str) -> Res<&str, &str> {
-  context("]]",
-  terminated(
-      tag("]]"),
-      space0
-    )
-  )(input)
-}
-
-fn graph_open(input: &str) -> Res<&str, &str> {
-  context("graph open",
-    preceded(
-      space0,
-      tag("{{"),
-    )
-  )(input)
-}
-
-fn graph_close(input: &str) -> Res<&str, &str> {
-  context("graph close",
-    terminated(
-      tag("}}"),
-      space0
-    )
-  )(input)
-}
-
-fn key_prefix(input: &str) -> Res<&str, &str> {
-  context("Key::",
-    preceded(
-      bracket_open,
-      tag("Key::")
-    )
-  )(input)
+  take_until1(")")
+  .preceded_by(tag("Layout("))
+  .terminated(tag(")"))
+  .map(|s: &str| s.chars().map(|c| Key::Layout(c)).collect())
+  .parse(input)
 }
 
 fn key_button(input: &str) -> Res<&str, Vec<Key>> {
-  context("[[Key::???]]",
-  delimited(
-    key_prefix,
-      alt((
-        map(
-          alt((key_space, key_meta, key_arrow, key_move, key_fn, key_raw)),
-          |key| vec![key]
-        ),
-        key_layout
-      )),
-      bracket_close
-    )
-  )(input)
+  alt((
+    alt((key_fn, key_other, key_raw)).map(|key| vec![key]),
+    key_layout
+  ))
+  .preceded_by(tag("Key::"))
+  .preceded_by(bracket_open)
+  .terminated(bracket_close)
+  .parse(input)
+}
+
+fn bracket_open(input: &str) -> Res<&str, &str> {
+  tag("[[")
+  .terminated(space0)
+  .parse(input)
+}
+
+fn bracket_close(input: &str) -> Res<&str, &str> {
+  tag("]]")
+  .preceded_by(space0)
+  .parse(input)
+}
+
+fn graph_open(input: &str) -> Res<&str, &str> {
+  tag("{{")
+  .terminated(space0)
+  .parse(input)
+}
+
+fn graph_close(input: &str) -> Res<&str, &str> {
+  tag("}}")
+  .preceded_by(space0)
+  .parse(input)
+}
+
+fn tag_close(input: &str) -> Res<&str, &str> {
+  tag("/")
+  .preceded_by(graph_open)
+  .terminated(space0)
+  .parse(input)
 }
 
 fn key_input_open(input: &str) -> Res<&str, &str> {
-  context("key input open",
-    delimited(
-      graph_open,
-        tag("KeyInput"),
-        graph_close
-    )
-  )(input)
+  tag("KeyInput")
+  .preceded_by(graph_open)
+  .terminated(graph_close)
+  .parse(input)
 }
 
 fn key_input_close(input: &str) -> Res<&str, &str> {
-  context("key input close",
-    delimited(
-      graph_open,
-        tag("/KeyInput"),
-        graph_close
-    )
-  )(input)
+  tag("KeyInput")
+  .preceded_by(tag_close)
+  .terminated(graph_close)
+  .parse(input)
 }
 
 fn key_input(input: &str) -> Res<&str, Vec<Token>> {
-  context("key input",
-    delimited(
-      key_input_open,
-      alt((
-        map(many1(key_button), |keys| keys.into_iter().flatten().map(|key| Token::KeyInput(key)).collect()),
-      )),
-      key_input_close
-    )
-  )(input)
+  many1(key_button.delimited_by(space0))
+  .preceded_by(key_input_open)
+  .terminated(key_input_close)
+  .map(|keys| keys.into_iter().flatten().map(|key| Token::KeyInput(key)).collect())
+  .parse(input)
 }
 
 fn key_down_open(input: &str) -> Res<&str, &str> {
-  context("key down open",
-    delimited(
-      graph_open,
-        tag("KeyDown"),
-        graph_close
-    )
-  )(input)
+  tag("KeyDown")
+  .preceded_by(graph_open)
+  .terminated(graph_close)
+  .parse(input)
 }
 
 fn key_down_close(input: &str) -> Res<&str, &str> {
-  context("key down close",
-    delimited(
-      graph_open,
-        tag("/KeyDown"),
-        graph_close
-    )
-  )(input)
+  tag("KeyDown")
+  .preceded_by(tag_close)
+  .terminated(graph_close)
+  .parse(input)
 }
 
 fn key_down(input: &str) -> Res<&str, Vec<Token>> {
-  context("key down",
-    delimited(
-      key_down_open,
-      map(key_button, |keys| keys.into_iter().map(|key| Token::KeyDown(key)).collect()),
-      key_down_close
-    )
-  )(input)
+  many1(key_button)
+  .preceded_by(key_down_open)
+  .terminated(key_down_close)
+  .map(|keys| keys.into_iter().flatten().map(|key| Token::KeyDown(key)).collect())
+  .parse(input)
 }
 
 fn key_up_open(input: &str) -> Res<&str, &str> {
-  context("key up open",
-    delimited(
-      graph_open,
-        tag("KeyUp"),
-        graph_close
-    )
-  )(input)
+  tag("KeyUp")
+  .preceded_by(graph_open)
+  .terminated(graph_close)
+  .parse(input)
 }
 
 fn key_up_close(input: &str) -> Res<&str, &str> {
-  context("key up close",
-    delimited(
-      graph_open,
-        tag("/KeyUp"),
-        graph_close
-    )
-  )(input)
+  tag("KeyUp")
+  .preceded_by(tag_close)
+  .terminated(graph_close)
+  .parse(input)
 }
 
 fn key_up(input: &str) -> Res<&str, Vec<Token>> {
-  context("key up",
-    delimited(
-      key_up_open,
-      map(key_button, |keys| keys.into_iter().map(|key| Token::KeyUp(key)).collect()),
-      key_up_close
-    )
-  )(input)
+  many1(key_button)
+  .preceded_by(key_up_open)
+  .terminated(key_up_close)
+  .map(|keys| keys.into_iter().flatten().map(|key| Token::KeyUp(key)).collect())
+  .parse(input)
+}
+
+fn text_open(input: &str) -> Res<&str, &str> {
+  tag("Text")
+  .preceded_by(graph_open)
+  .terminated(graph_close)
+  .parse(input)
+}
+
+fn text_close(input: &str) -> Res<&str, &str> {
+  tag("Text")
+  .preceded_by(tag_close)
+  .terminated(graph_close)
+  .parse(input)
 }
 
 fn text(input: &str) -> Res<&str, Vec<Token>> {
-  context("text",
-    delimited(
-      tag("{{Text}}"),
-      map(
-        take_until1("{{/Text}}"),
-        |chars: &str| vec![Token::Unicode(chars.to_string())]
-      ),
-      tag("{{/Text}}")
-    )
-  )(input)
+  text_open
+  .precedes(many_till(anychar, tag("{{").peek()))
+  .terminated(text_close)
+  .map(|(chars, _)| vec![Token::Text(chars.into_iter().collect::<String>())])
+  .parse(input)
 }
 
 fn keyboard(input: &str) -> Res<&str, Vec<Token>> {
-  context("mutiple keyboard inputs",
-    map(
-      many1(
-        alt((
-          key_input,
-          key_down,
-          key_up,
-          text
-        )),
-      ),
-      |tokens| tokens.into_iter().flatten().collect()
-    )
-  )(input)
+  many1(
+    alt((
+      key_input,
+      key_down,
+      key_up,
+      text,
+    )).delimited_by(space0)
+  ).context("keyboard")
+  .map(|tokens| tokens.into_iter().flatten().collect())
+  .all_consuming()
+  .parse(input)
 }
 
 /**
@@ -311,7 +255,7 @@ fn verbose_error() {
     _ => {}
   }
   assert_eq!(result, Ok(("", vec![
-    Token::Unicode(String::from("hello world"))
+    Token::Text(String::from("hello world"))
   ])));
 }
 **/
@@ -322,12 +266,12 @@ mod tests {
 
     #[test]
     // Key::<Return|Delete|Backspace|Space|Tab>
-    fn key_input_space() {
-      assert_eq!(keyboard("{{KeyInput}}[[Key::Return]]{{/KeyInput}}"), Ok(("", vec![Token::KeyInput(Key::Return)])));
-      assert_eq!(keyboard("{{KeyInput}}[[Key::Delete]]{{/KeyInput}}"), Ok(("", vec![Token::KeyInput(Key::Delete)])));
-      assert_eq!(keyboard("{{KeyInput}}[[Key::Backspace]]{{/KeyInput}}"), Ok(("", vec![Token::KeyInput(Key::Backspace)])));
-      assert_eq!(keyboard("{{KeyInput}}[[Key::Space]]{{/KeyInput}}"), Ok(("", vec![Token::KeyInput(Key::Space)])));
-      assert_eq!(keyboard("{{KeyInput}}[[Key::Tab]]{{/KeyInput}}"), Ok(("", vec![Token::KeyInput(Key::Tab)])));
+    fn test_key_input_space() {
+      assert_eq!(keyboard("{{KeyInput}}[[Key::Return]]{{/KeyInput}}").unwrap(), ("", vec![Token::KeyInput(Key::Return)]));
+      assert_eq!(keyboard("{{KeyInput}}[[Key::Delete]]{{/KeyInput}}").unwrap(), ("", vec![Token::KeyInput(Key::Delete)]));
+      assert_eq!(keyboard("{{KeyInput}}[[Key::Backspace]]{{/KeyInput}}").unwrap(), ("", vec![Token::KeyInput(Key::Backspace)]));
+      assert_eq!(keyboard("{{KeyInput}}[[Key::Space]]{{/KeyInput}}").unwrap(), ("", vec![Token::KeyInput(Key::Space)]));
+      assert_eq!(keyboard("{{KeyInput}}[[Key::Tab]]{{/KeyInput}}").unwrap(), ("", vec![Token::KeyInput(Key::Tab)]));
       assert_eq!(
         keyboard("\
           {{KeyInput}}\
@@ -337,37 +281,42 @@ mod tests {
           [[Key::Space]]\
           [[Key::Tab]]\
           {{/KeyInput}}"
-        ),
-        Ok(("",vec![
+        ).unwrap(),
+        ("",vec![
           Token::KeyInput(Key::Return),
           Token::KeyInput(Key::Delete),
           Token::KeyInput(Key::Backspace),
           Token::KeyInput(Key::Space),
           Token::KeyInput(Key::Tab)
-        ]))
+        ])
       );
     }
 
     #[test]
-    fn text() {
-      assert_eq!(keyboard("{{Text}}hello world{{/Text}}"), Ok(("", vec![Token::Unicode(String::from("hello world"))])));
+    fn test_text() {
+      assert_eq!(
+        text("{{Text}}hello world{{/Text}}").expect("Testing Parser"),
+        ("", vec![Token::Text(String::from("hello world"))])
+      );
     }
 
     #[test]
-    fn mix_text_keylayout() {
+    fn test_multi_spaces() {
+      let result = keyboard("\
+      {{ Texts }}hello{{ / Text }} \
+      {{ KeyInput  }} \
+        [[Key::Layout( )  ]] \
+      {{   / KeyInput }} \
+      {{ Text }}world{{ / Text }}"
+      ).expect("Testing Parser");
+      println!("{:#?}", result);
       assert_eq!(
-        keyboard("\
-          {{Text}}hello{{/Text}} \
-          {{KeyInput}} \
-            [[Key::( )]] \
-          {{/KeyInput}} \
-          {{Text}}world{{/Text}}"
-        ),
-        Ok(("", vec![
-          Token::Unicode(String::from("hello")),
+        result,
+        ("", vec![
+          Token::Text(String::from("hello")),
           Token::KeyInput(Key::Layout(' ')),
-          Token::Unicode(String::from("world"))
-        ]))
+          Token::Text(String::from("world"))
+        ])
       );
     }
 }
