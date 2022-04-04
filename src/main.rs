@@ -1,12 +1,13 @@
 use clap::{Command, Arg};
 use std::{thread, fs, time};
 use enigo::{Enigo, KeyboardControllable};
+use parser::{Token, parse};
 
 mod parser;
 
 fn main() {
     let matches = Command::new("Keyboard Emulator")
-        .version("1.0.0")
+        .version("1.0.1")
         .author("Humanoid Typhoon <typhoon51280@users.noreply.github.com>")
         .about("Keyboard Input Simulator")
         .arg(
@@ -47,9 +48,17 @@ fn main() {
                 .required(false)
                 .help("Parse Mode enabled"),
         )
+        .arg(
+            Arg::new("debug")
+                .long("debug")
+                .takes_value(false)
+                .required(false)
+                .help("Debug Mode"),
+        )
         .get_matches();
-    let delay = matches.value_of("delay").unwrap().parse::<u64>().unwrap_or(0);
+    let delay = matches.value_of("delay").unwrap_or("0").parse::<u64>().unwrap_or(0);
     let parse_flag = matches.is_present("parse");
+    let debug_flag = matches.is_present("debug");
     let file = matches.value_of("file").unwrap_or("");
     let content: String;
     if !file.is_empty() {
@@ -61,7 +70,29 @@ fn main() {
     let mut enigo = Enigo::new();
     thread::sleep(time::Duration::from_secs(delay));
     if parse_flag {
-        enigo.key_sequence_parse(command);
+        let tokens = match parse(command) {
+            Ok(tokens) => {
+                if debug_flag {
+                    println!("{:#?}", tokens);
+                }
+                tokens
+            },
+            Err(error) => {
+                if debug_flag { 
+                    panic!("{:#?}", error)
+                } else {
+                    panic!("Parsing Error")
+                }
+            }
+        };
+        for token in tokens {
+            match token {
+                Token::Text(text) =>  { enigo.key_sequence(text.as_str()) }
+                Token::KeyClick(key) => { enigo.key_click(key) }
+                Token::KeyDown(key) => { enigo.key_down(key) }
+                Token::KeyUp(key) => { enigo.key_down(key) }
+            }
+        }
     } else {
         enigo.key_sequence(command);
     }
